@@ -1,7 +1,7 @@
 ## Legal Disclaimer
 This project is for **educational purposes only**. 
 
-1. No Hosting or Distribution of Content
+**1. No Hosting or Distribution of Content**
 
 This application does not host, store, upload, or distribute any video, audio, or media files. It functions solely as a user interface that:
 

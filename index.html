@@ -2232,7 +2232,8 @@
       const base = state.type === 'movie'
         ? `https://vidfast.pro/movie/${state.id}`
         : `https://vidfast.pro/tv/${state.id}/${state.season}/${state.episode}`;
-      return `${base}?theme=E50914&nextButton=false&autoPlay=true&fullscreenButton=false`;
+      const extraParams = (state.type === 'tv' && String(state.id) === '71694') ? '&server=Oscar' : '';
+      return `${base}?theme=E50914&nextButton=false&autoPlay=true&fullscreenButton=false${extraParams}`;
     }
 
     // ══════════════════════════════════════

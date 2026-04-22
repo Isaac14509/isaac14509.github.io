@@ -345,6 +345,41 @@
       align-items: center;
       gap: 5px;
       flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .settings-hint-keys {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .settings-io {
+      display: flex;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .btn-io {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--muted-hi);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: background 0.14s, border-color 0.14s, color 0.14s;
+      font-family: 'Karla', sans-serif;
+      text-transform: uppercase;
+    }
+
+    .btn-io:hover {
+      background: rgba(255, 255, 255, 0.11);
+      border-color: var(--border-hi);
+      color: white;
     }
 
     .settings-hint a {
@@ -1749,8 +1784,15 @@
         </div>
       </div>
       <div class="settings-hint">
-        <kbd>S</kbd> save &nbsp;<kbd>N</kbd> next ep &nbsp;<kbd>J</kbd> jump to ep &nbsp;<kbd>G</kbd> settings
-        &nbsp;<kbd>F</kbd> fullscreen &nbsp;<kbd>/</kbd> search &nbsp;<kbd>Esc</kbd> close
+        <div class="settings-hint-keys">
+          <kbd>S</kbd> save &nbsp;<kbd>N</kbd> next ep &nbsp;<kbd>J</kbd> jump to ep &nbsp;<kbd>G</kbd> settings
+          &nbsp;<kbd>F</kbd> fullscreen &nbsp;<kbd>/</kbd> search &nbsp;<kbd>Esc</kbd> close
+        </div>
+        <div class="settings-io">
+          <button class="btn-io" id="btnExport" title="Export your watchlist, progress and settings">↑ Export</button>
+          <button class="btn-io" id="btnImport" title="Import a previously exported save file">↓ Import</button>
+          <input type="file" id="importFileInput" accept=".json" style="display:none;">
+        </div>
       </div>
     </div>
 
@@ -2232,8 +2274,7 @@
       const base = state.type === 'movie'
         ? `https://vidfast.pro/movie/${state.id}`
         : `https://vidfast.pro/tv/${state.id}/${state.season}/${state.episode}`;
-      const extraParams = (state.type === 'tv' && String(state.id) === '71694') ? '&server=Oscar' : '';
-      return `${base}?theme=E50914&nextButton=false&autoPlay=true&fullscreenButton=false${extraParams}`;
+      return `${base}?theme=E50914&nextButton=false&autoPlay=true&fullscreenButton=false`;
     }
 
     // ══════════════════════════════════════
@@ -3816,6 +3857,66 @@
         if (detailModal.classList.contains('open')) { closeDetail(); }
       }
     }, true); // capture phase so it runs before the existing handler
+
+    // ══════════════════════════════════════
+    //  IMPORT / EXPORT
+    // ══════════════════════════════════════
+    $('btnExport').addEventListener('click', () => {
+      playUiSound('click');
+      try {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const date = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `not2flix-backup-${date}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('✓ Save exported');
+      } catch {
+        showToast('Export failed');
+      }
+    });
+
+    $('btnImport').addEventListener('click', () => {
+      $('importFileInput').value = '';
+      $('importFileInput').click();
+    });
+
+    $('importFileInput').addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          // Basic sanity check — must look like a not2flix save
+          if (typeof imported !== 'object' || imported === null || !('progress' in imported)) {
+            showToast('⚠ Invalid save file'); return;
+          }
+          // Deep merge: imported data wins, but fill in any missing keys from BLANK
+          Object.assign(state, { ...BLANK, ...imported });
+          ['progress', 'watchlist', 'recent', 'savedShows', 'savedMovies', 'recentSearches'].forEach(k => {
+            if (!state[k]) state[k] = Array.isArray(BLANK[k]) ? [] : {};
+          });
+          persist();
+          syncSettingsUI();
+          updateDisplay();
+          renderWatchlist();
+          renderRecent();
+          showSearchHistory();
+          if (state.id) {
+            currentThemeKey = null;
+            triggerDynamicTheme();
+          }
+          showToast('✓ Save imported');
+          playUiSound('play');
+        } catch {
+          showToast('⚠ Could not read file');
+        }
+      };
+      reader.readAsText(file);
+    });
 
     // ══════════════════════════════════════
     //  INIT

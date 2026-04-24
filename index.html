@@ -740,38 +740,56 @@
 
     /* ══════════ TABS ══════════ */
     .tabs {
+      position: relative;
       display: flex;
-      gap: 2px;
-      border-bottom: 1px solid var(--border);
+      gap: 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 60px;
+      padding: 4px;
       margin-bottom: 18px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      border: 0.5px solid rgba(255,255,255,0.08);
+    }
+
+    .tabs-indicator {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      height: calc(100% - 8px);
+      background: rgba(255,255,255,0.12);
+      border-radius: 60px;
+      transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1), width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
     .tab-btn {
+      position: relative;
+      z-index: 1;
+      flex: 1;
       background: transparent;
       border: none;
-      border-radius: 0;
+      border-radius: 60px;
       color: var(--muted);
-      padding: 12px 12px;
-      font-size: 11.5px;
+      padding: 9px 8px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -1px;
-      transition: color 0.14s, border-color 0.14s;
+      transition: color 0.2s;
+      white-space: nowrap;
+      cursor: pointer;
     }
 
     .tab-btn:hover {
-      color: white;
+      color: rgba(255,255,255,0.8);
       background: transparent;
-      border-color: transparent;
     }
 
     .tab-btn.active {
       color: white;
       background: transparent;
-      border-color: var(--accent);
-      transition: color 0.14s, border-color 0.7s;
     }
 
     /* ══════════ SECTION HEADING ══════════ */
@@ -1887,7 +1905,8 @@
         <!-- Tabs + panels (scrollable) -->
         <div class="sidebar-tabs-wrap">
 
-          <div class="tabs">
+          <div class="tabs" id="tabsNav">
+            <div class="tabs-indicator" id="tabsIndicator"></div>
             <button class="tab-btn active" id="tabSearch">🔍 Search</button>
             <button class="tab-btn" id="tabWatchlist">📋 Watchlist</button>
             <button class="tab-btn" id="tabRecent">⟳ Continue</button>
@@ -3288,11 +3307,22 @@
     const TAB_PANELS = { search: 'panelSearch', watchlist: 'panelWatchlist', saved: 'panelRecent', recs: 'panelRecs' };
     const TAB_BTNS = { search: 'tabSearch', watchlist: 'tabWatchlist', saved: 'tabRecent', recs: 'tabRecs' };
 
+    function moveTabIndicator(activeBtn) {
+      const nav = $('tabsNav');
+      const indicator = $('tabsIndicator');
+      if (!nav || !indicator || !activeBtn) return;
+      const navRect = nav.getBoundingClientRect();
+      const btnRect = activeBtn.getBoundingClientRect();
+      indicator.style.left = (btnRect.left - navRect.left + nav.scrollLeft) + 'px';
+      indicator.style.width = btnRect.width + 'px';
+    }
+
     function setTab(tab) {
       Object.keys(TAB_PANELS).forEach(k => {
         $(TAB_PANELS[k]).style.display = k === tab ? 'block' : 'none';
         $(TAB_BTNS[k]).classList.toggle('active', k === tab);
       });
+      moveTabIndicator($(TAB_BTNS[tab]));
       if (tab === 'watchlist') renderWatchlist();
       if (tab === 'saved') renderRecent();
     }
@@ -3300,6 +3330,9 @@
     Object.keys(TAB_BTNS).forEach(k => {
       $(TAB_BTNS[k]).addEventListener('click', () => setTab(k));
     });
+
+    // Init indicator position after layout
+    requestAnimationFrame(() => moveTabIndicator($('tabSearch')));
 
     // ══════════════════════════════════════
     //  SETTINGS

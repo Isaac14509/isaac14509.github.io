@@ -1315,7 +1315,7 @@
 
     .detail-hero-poster {
       position: absolute;
-      bottom: -22px;
+      bottom: 8px;
       left: 24px;
       width: 92px;
       aspect-ratio: 2/3;
@@ -1323,6 +1323,7 @@
       object-fit: cover;
       border: 2px solid rgba(255,255,255,0.14);
       box-shadow: 0 12px 32px rgba(0,0,0,0.65);
+      z-index: 2;
     }
 
     .detail-body { padding: 30px 24px 24px 132px; min-height: 0; }
@@ -2002,17 +2003,14 @@
 
       searchInput.addEventListener('blur', () => {
         if (searchInput.value) return;
-        // Only restart animation if nothing is currently playing
-        if (!state.id) {
-          animRunning = true;
-          charIdx = 0;
-          isDeleting = false;
-          paused = false;
-          phraseIdx = (phraseIdx + 1) % phrases.length;
-          delay = 600;
-          lastTime = 0;
-          rafId = requestAnimationFrame(tick);
-        }
+        animRunning = true;
+        charIdx = 0;
+        isDeleting = false;
+        paused = false;
+        phraseIdx = (phraseIdx + 1) % phrases.length;
+        delay = 600;
+        lastTime = 0;
+        rafId = requestAnimationFrame(tick);
       });
     })();
 
@@ -2100,6 +2098,17 @@
       persist();
     }
 
+    function deduplicateRecentByType(items) {
+      const byKey = new Map();
+      [...items]
+        .sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0))
+        .forEach(item => {
+          const key = `${item.type}-${String(item.id)}`;
+          if (!byKey.has(key)) byKey.set(key, item);
+        });
+      return [...byKey.values()].slice(0, RECENT_LIMIT);
+    }
+
     function migrateLegacySavedToRecent() {
       if (state.recent.length) return;
       const legacy = [];
@@ -2122,21 +2131,12 @@
         });
       });
       if (legacy.length) {
-        state.recent = legacy.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0)).slice(0, RECENT_LIMIT);
+        state.recent = deduplicateRecentByType(legacy);
         persist();
       }
     }
 
-    state.recent = [...(() => {
-      const byKey = new Map();
-      [...state.recent]
-        .sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0))
-        .forEach(item => {
-          const key = `${item.type}-${String(item.id)}`;
-          if (!byKey.has(key)) byKey.set(key, item);
-        });
-      return byKey.values();
-    })()].slice(0, RECENT_LIMIT);
+    state.recent = deduplicateRecentByType(state.recent);
     persist();
 
     // ══════════════════════════════════════
@@ -2624,14 +2624,7 @@
     //  RECENT ITEMS
     // ══════════════════════════════════════
     function getCollapsedRecentItems() {
-      const byKey = new Map();
-      [...state.recent]
-        .sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0))
-        .forEach(item => {
-          const key = `${item.type}-${String(item.id)}`;
-          if (!byKey.has(key)) byKey.set(key, item);
-        });
-      return [...byKey.values()].slice(0, RECENT_LIMIT);
+      return deduplicateRecentByType(state.recent);
     }
 
     function removeRecent(type, id) {
@@ -3257,6 +3250,7 @@
       return _audioCtx;
     }
 
+    // Unlock audio context on first user interaction (required for Web Audio API)
     document.addEventListener('click', () => { try { getAudioCtx(); } catch { } }, { once: true });
 
     function playUiSound(type) {
@@ -3312,17 +3306,46 @@
     let detailItem = null;
     let detailSeasonCache = {};
 
+    function clearDetailCache() {
+      detailSeasonCache = {};
+    }
+
+    function getCachedEpisodes(itemId, season) {
+      const cacheKey = `${itemId}-${season}`;
+      return detailSeasonCache[cacheKey] || null;
+    }
+
+    function setCachedEpisodes(itemId, season, episodes) {
+      const cacheKey = `${itemId}-${season}`;
+      detailSeasonCache[cacheKey] = episodes;
+    }
+
+    async function fetchEpisodesForSeason(itemId, season) {
+      try {
+        const data = await workerFetch({ action: 'season', id: itemId, season });
+        let episodes = data.episodes || [];
+        const count = data.episodeCount || episodes.length;
+        if (!episodes.length && count > 0) {
+          episodes = Array.from({ length: count }, (_, i) => ({ number: i + 1, name: `Episode ${i + 1}`, runtime: 0 }));
+        }
+        setCachedEpisodes(itemId, season, episodes);
+        return episodes;
+      } catch {
+        return [];
+      }
+    }
+
     const detailModal = $('detailModal');
     const detailBox = $('detailBox');
 
     function openDetail(item) {
       detailItem = { ...item };
-      detailSeasonCache = {};
+      clearDetailCache();
 
       const posterUrl = item.posterPath ? `${IMAGE_BASE}${item.posterPath}` : '';
       const backdropUrl = item.backdropPath
-        ? `https://image.tmdb.org/t/p/w780${item.backdropPath}`
-        : posterUrl;
+        ? `https://image.tmdb.org/t/p/w1280${item.backdropPath}`
+        : posterUrl ? `https://image.tmdb.org/t/p/w780${item.posterPath}` : '';
 
       const heroImg = $('detailHeroImg');
       const heroPoster = $('detailHeroPoster');
@@ -3429,19 +3452,9 @@
       epList.innerHTML = '';
       epLoading.style.display = 'block';
 
-      const cacheKey = `${item.id}-${season}`;
-      let episodes = detailSeasonCache[cacheKey];
-
+      let episodes = getCachedEpisodes(item.id, season);
       if (!episodes) {
-        try {
-          const data = await workerFetch({ action: 'season', id: item.id, season });
-          episodes = data.episodes || [];
-          const count = data.episodeCount || episodes.length;
-          if (!episodes.length && count > 0) {
-            episodes = Array.from({ length: count }, (_, i) => ({ number: i + 1, name: `Episode ${i + 1}`, runtime: 0 }));
-          }
-          detailSeasonCache[cacheKey] = episodes;
-        } catch { episodes = []; }
+        episodes = await fetchEpisodesForSeason(item.id, season);
       }
 
       epLoading.style.display = 'none';

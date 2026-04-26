@@ -2002,14 +2002,17 @@
 
       searchInput.addEventListener('blur', () => {
         if (searchInput.value) return;
-        animRunning = true;
-        charIdx = 0;
-        isDeleting = false;
-        paused = false;
-        phraseIdx = (phraseIdx + 1) % phrases.length;
-        delay = 600;
-        lastTime = 0;
-        rafId = requestAnimationFrame(tick);
+        // Only restart animation if nothing is currently playing
+        if (!state.id) {
+          animRunning = true;
+          charIdx = 0;
+          isDeleting = false;
+          paused = false;
+          phraseIdx = (phraseIdx + 1) % phrases.length;
+          delay = 600;
+          lastTime = 0;
+          rafId = requestAnimationFrame(tick);
+        }
       });
     })();
 

@@ -1299,6 +1299,10 @@
       flex-shrink: 0;
     }
 
+    .detail-hero.movie-hero {
+      aspect-ratio: 16/6;
+    }
+
     .detail-hero-img {
       width: 100%;
       height: 100%;
@@ -3347,6 +3351,8 @@
         ? `https://image.tmdb.org/t/p/w1280${item.backdropPath}`
         : posterUrl ? `https://image.tmdb.org/t/p/w780${item.posterPath}` : '';
 
+      const heroEl = $('detailHero');
+      heroEl.classList.toggle('movie-hero', item.type === 'movie');
       const heroImg = $('detailHeroImg');
       const heroPoster = $('detailHeroPoster');
       heroImg.src = backdropUrl;

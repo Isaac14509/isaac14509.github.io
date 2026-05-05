@@ -689,9 +689,7 @@
       min-width: 0;
     }
 
-    .ep-nav-left, .ep-nav-right { display: flex; align-items: center; flex-shrink: 0; }
-    .ep-nav-left  { margin-right: 10px; }
-    .ep-nav-right { gap: 5px; }
+    .ep-nav-right { display: flex; align-items: center; flex-shrink: 0; gap: 5px; }
 
     .ep-nav #epDisplay {
       font-family: 'Bebas Neue', sans-serif;
@@ -703,36 +701,6 @@
     }
 
     .ep-nav button { padding: 6px 11px; font-size: 11px; }
-
-    .ep-jump {
-      display: none !important;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      flex-shrink: 0;
-    }
-
-    .ep-jump input {
-      width: 50px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: var(--radius);
-      padding: 6px 8px;
-      font-size: 11px;
-      font-weight: 600;
-      font-family: 'DM Sans', sans-serif;
-      text-align: center;
-      outline: none;
-    }
-
-    .ep-jump input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.13);
-    }
-
-    .ep-jump input::placeholder { color: var(--muted); }
-    .ep-jump button { padding: 6px 11px; font-size: 10.5px; }
 
     .info-actions { display: flex; gap: 7px; flex-shrink: 0; }
 
@@ -1193,8 +1161,6 @@
       .search-wrap { min-width: 0; max-width: 100%; }
       .media-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
       .info-bar { gap: 9px; }
-      .ep-jump { display: none !important; width: 100%; justify-content: flex-start; }
-      .ep-jump input { width: 56px; }
       .player-hit-zone {
         position: absolute;
         bottom: 10px;
@@ -1209,9 +1175,6 @@
         cursor: default;
       }
     }
-
-    /* ══════════ SEASON JUMP ══════════ */
-    #sfSeasonJump { display: none; }
 
     /* ══════════ TOGGLE (poster colours & sound) ══════════ */
     .btn-theme-toggle, .btn-sound-toggle {
@@ -1639,7 +1602,7 @@
       </div>
       <div class="settings-hint">
         <div class="settings-hint-keys">
-          <kbd>S</kbd> save &nbsp;<kbd>N</kbd> next ep &nbsp;<kbd>J</kbd> jump to ep &nbsp;<kbd>G</kbd> settings
+          <kbd>Space</kbd>/<kbd>K</kbd> play/pause &nbsp;<kbd>S</kbd> save &nbsp;<kbd>N</kbd> next ep &nbsp;<kbd>G</kbd> settings
           &nbsp;<kbd>F</kbd> fullscreen &nbsp;<kbd>/</kbd> search &nbsp;<kbd>Esc</kbd> close
         </div>
         <div class="settings-io">
@@ -1699,13 +1662,6 @@
             <div class="info-meta" id="infoMeta"></div>
           </div>
           <div class="ep-nav" id="epNav">
-            <div class="ep-nav-left">
-              <div class="ep-jump" id="epJumpWrap">
-                <input id="jumpSeason" type="number" min="1" inputmode="numeric" placeholder="S" title="Season">
-                <input id="jumpEpisode" type="number" min="1" inputmode="numeric" placeholder="E" title="Episode">
-                <button id="btnGoToEp" title="Go to season and episode">Go to</button>
-              </div>
-            </div>
             <div class="ep-nav-right">
               <button id="btnPrevEp" title="Previous episode">◀</button>
               <span id="epDisplay">—</span>
@@ -1904,6 +1860,7 @@
     let searchTimer = null;
     let saveInFlight = false;
     let currentThemeKey = null;
+    let playerIsPlaying = false;
 
     // ══════════════════════════════════════
     //  DOM
@@ -2172,23 +2129,16 @@
         epDisplay.textContent = `S${String(state.season).padStart(2, '0')} E${String(state.episode).padStart(2, '0')}`;
         infoMeta.textContent = `Season ${state.season}  ·  Episode ${state.episode}`;
         $('epNav').style.display = '';
-        $('epJumpWrap').style.display = '';
-        $('jumpSeason').value = state.season;
-        $('jumpEpisode').value = state.episode;
         $('btnNextEpOverlay').style.display = '';
       } else if (state.type === 'movie' && state.id) {
         epDisplay.textContent = 'MOVIE';
         infoMeta.textContent = 'Movie';
         $('epNav').style.display = 'none';
-        $('epJumpWrap').style.display = 'none';
         $('btnNextEpOverlay').style.display = 'none';
       } else {
         epDisplay.textContent = '—';
         infoMeta.textContent = '';
         $('epNav').style.display = '';
-        $('epJumpWrap').style.display = '';
-        $('jumpSeason').value = '';
-        $('jumpEpisode').value = '';
         $('btnNextEpOverlay').style.display = '';
       }
 
@@ -2198,17 +2148,27 @@
     // ══════════════════════════════════════
     //  BUILD URL
     // ══════════════════════════════════════
+    function getPlayerThemeHex() {
+      const rgb = getComputedStyle(document.documentElement)
+        .getPropertyValue('--accent-rgb').replace(/\s/g, '');
+      if (!rgb) return 'E50914';
+      const parts = rgb.split(',').map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) return 'E50914';
+      return parts.map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
     function buildUrl() {
+      const hex = getPlayerThemeHex();
       const base = state.type === 'movie'
         ? `https://vidfast.pro/movie/${state.id}`
         : `https://vidfast.pro/tv/${state.id}/${state.season}/${state.episode}`;
-      return `${base}?theme=E50914&nextButton=false&autoPlay=true&fullscreenButton=false`;
+      return `${base}?theme=${hex}&nextButton=false&autoPlay=true&fullscreenButton=false&chromecast=false`;
     }
 
     // ══════════════════════════════════════
     //  LOAD CONTENT
     // ══════════════════════════════════════
-    function loadContent(scrollUp = true) {
+    async function loadContent(scrollUp = true) {
       if (!state.id) { updateDisplay(); return; }
 
       updateDisplay();
@@ -2218,7 +2178,6 @@
         lastLoadedId = state.id;
         fetchTitle();
         setTimeout(() => loadRecommendations(), 800);
-        triggerDynamicTheme();
       }
       if (state.type === 'tv') fetchEpisodeRuntime();
 
@@ -2227,6 +2186,9 @@
       startPoll();
 
       const savedTime = state.progress[progressKey()] || 0;
+
+      // Wait for theme to resolve so the player loads with the correct accent colour
+      await triggerDynamicTheme();
       player.src = buildUrl();
       showOverlay();
 
@@ -2253,6 +2215,8 @@
             state.year = data.year || '';
             persist();
             updateDisplay();
+            // Update UI theme with real poster (player already loaded, don't interrupt it)
+            currentThemeKey = null;
             triggerDynamicTheme();
           }
         })
@@ -2284,12 +2248,21 @@
 
     window.addEventListener('message', evt => {
       if (!VIDFAST_ORIGINS.includes(evt.origin)) return;
-      if (evt.data?.type !== 'PLAYER_EVENT' || evt.data?.data?.event !== 'playerstatus') return;
+      if (evt.data?.type !== 'PLAYER_EVENT') return;
 
-      const t = evt.data.data.currentTime || 0;
+      const { event, currentTime: t, playing } = evt.data.data || {};
+
+      // Track play/pause state for K shortcut
+      if (event === 'play') { playerIsPlaying = true; return; }
+      if (event === 'pause') { playerIsPlaying = false; return; }
+
+      if (event !== 'playerstatus') return;
+
       const key = progressKey();
       const prev = state.progress[key] || 0;
       const shouldPersist = pendingSaveMode === 'manual' || Math.abs(t - prev) >= SAVE_THRESHOLD;
+
+      if (playing !== undefined) playerIsPlaying = playing;
 
       if (state.id && shouldPersist) {
         state.progress[key] = t;
@@ -2365,30 +2338,6 @@
       }
     }
 
-    async function goToEpisode(targetSeason, targetEpisode) {
-      if (!state.id || state.type !== 'tv') return;
-
-      const season = Math.max(1, parseInt(targetSeason, 10) || 0);
-      const episode = Math.max(1, parseInt(targetEpisode, 10) || 0);
-
-      if (!season || !episode) { showToast('Enter a valid season and episode'); return; }
-
-      try {
-        const data = await workerFetch({ action: 'season', id: state.id, season });
-        const count = data.episodeCount || 0;
-        if (!count) { showToast(`Season ${season} was not found`); return; }
-        if (episode > count) { showToast(`Season ${season} has ${count} episodes`); return; }
-      } catch { }
-
-      state.season = season;
-      state.episode = episode;
-      persist();
-      updateWatchlistEntry();
-      cancelAutoNext();
-      loadContent(false);
-      showToast(`↪  S${state.season} E${state.episode}`);
-    }
-
     async function goNextEpisode() {
       if (!state.id || state.type !== 'tv') return;
 
@@ -2447,17 +2396,6 @@
 
     $('btnNextEp').addEventListener('click', () => { playUiSound('click'); goNextEpisode(); });
     $('btnPrevEp').addEventListener('click', () => { playUiSound('click'); goPrevEpisode(); });
-    $('btnGoToEp').addEventListener('click', () => {
-      playUiSound('click'); goToEpisode($('jumpSeason').value, $('jumpEpisode').value);
-    });
-    ['jumpSeason', 'jumpEpisode'].forEach(id => {
-      $(id).addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          goToEpisode($('jumpSeason').value, $('jumpEpisode').value);
-        }
-      });
-    });
 
     // ══════════════════════════════════════
     //  SAVE PROGRESS
@@ -3217,12 +3155,20 @@
     document.addEventListener('keydown', e => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
       switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          if (state.id) {
+            player.contentWindow?.postMessage({ command: playerIsPlaying ? 'pause' : 'play' }, '*');
+          }
+          break;
         case 's': case 'S': saveProgress(false); break;
         case 'n': case 'N': goNextEpisode(); break;
-        case 'g': case 'G': toggleSettings(); break;
-        case 'j': case 'J':
-          if (state.type === 'tv' && state.id) { $('jumpSeason').focus(); $('jumpSeason').select(); }
+        case 'k': case 'K':
+          if (state.id) {
+            player.contentWindow?.postMessage({ command: playerIsPlaying ? 'pause' : 'play' }, '*');
+          }
           break;
+        case 'g': case 'G': toggleSettings(); break;
         case 'f': case 'F':
           if (!document.fullscreenElement) playerShell.requestFullscreen().catch(() => { });
           else document.exitFullscreen().catch(() => { });

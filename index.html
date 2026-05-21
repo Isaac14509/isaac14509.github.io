@@ -1104,18 +1104,6 @@
 
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ══════════ REC GROUPS ══════════ */
-    .rec-group { margin-bottom: 26px; }
-
-    .rec-group-title {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 12px;
-      letter-spacing: 0.2em;
-      color: var(--muted);
-      text-transform: uppercase;
-      margin-bottom: 12px;
-    }
-
     /* ══════════ TWO-COLUMN LAYOUT ══════════ */
     .main-layout { display: flex; gap: 22px; align-items: flex-start; }
 
@@ -1704,7 +1692,6 @@
             <button class="tab-btn active" id="tabSearch">🔍 Search</button>
             <button class="tab-btn" id="tabWatchlist">📋 Watchlist</button>
             <button class="tab-btn" id="tabRecent">⟳ Continue</button>
-            <button class="tab-btn" id="tabRecs">✨ Recs</button>
           </div>
 
           <!-- SEARCH TAB -->
@@ -1735,18 +1722,6 @@
               <div class="empty-text">Your continue watching items will appear here as you watch.<br><span>Continue watching from where you left off.</span></div>
             </div>
             <div class="media-grid" id="recentGrid" style="display:none;"></div>
-          </div>
-
-          <!-- RECS TAB -->
-          <div id="panelRecs" style="display:none;">
-            <div class="empty-state" id="recsEmpty">
-              <span class="empty-icon">✨</span>
-              <div class="empty-text">Load something to watch to see recommendations.</div>
-            </div>
-            <div id="recsLoading" style="display:none; text-align:center; padding:52px; color:var(--muted); font-size:13px;">
-              Finding recommendations <span class="dots"><span></span><span></span><span></span></span>
-            </div>
-            <div id="recsContent" style="display:none;"></div>
           </div>
 
         </div><!-- /sidebar-tabs-wrap -->
@@ -1795,6 +1770,11 @@
           <div id="detailEpLoading" style="display:none;">Loading <span class="dots"><span></span><span></span><span></span></span></div>
           <div class="detail-ep-list" id="detailEpList"></div>
         </div>
+      </div>
+
+      <div id="detailSimilar" style="display:none;">
+        <div class="section-heading" style="padding:0 24px;">More Like This</div>
+        <div class="media-grid" id="detailSimilarGrid" style="padding:0 24px 24px;"></div>
       </div>
     </div>
   </div>
@@ -2177,7 +2157,6 @@
       if (idChanged) {
         lastLoadedId = state.id;
         fetchTitle();
-        setTimeout(() => loadRecommendations(), 800);
       }
       if (state.type === 'tv') fetchEpisodeRuntime();
 
@@ -2733,62 +2712,6 @@
     searchInput.addEventListener('blur', () => { setTimeout(() => hideSearchHistory(), 150); });
 
     // ══════════════════════════════════════
-    //  RECOMMENDATIONS
-    // ══════════════════════════════════════
-    async function loadRecommendations() {
-      if (!state.id) return;
-      const id = state.id, type = state.type, title = state.title || getDisplayTitle();
-
-      $('recsLoading').style.display = 'block';
-      $('recsContent').style.display = 'none';
-      $('recsEmpty').style.display = 'none';
-
-      try {
-        const groups = await workerFetch({ action: 'recs', id, type, title });
-        $('recsLoading').style.display = 'none';
-        const hasAny = (groups.tv?.length || 0) + (groups.movie?.length || 0) > 0;
-        if (!hasAny) { $('recsEmpty').style.display = 'block'; return; }
-
-        $('recsContent').style.display = 'block';
-        $('recsContent').innerHTML = '';
-
-        ['tv', 'movie'].forEach(gtype => {
-          const items = groups[gtype];
-          if (!items?.length) return;
-          const section = document.createElement('div');
-          section.className = 'rec-group';
-          section.innerHTML = `<div class="rec-group-title">${gtype === 'tv' ? 'Shows' : 'Movies'}</div>`;
-          const grid = document.createElement('div');
-          grid.className = 'media-grid';
-
-          items.slice(0, 8).forEach(item => {
-            const card = createCard({
-              type: gtype, id: item.id, title: item.title,
-              posterPath: item.posterPath, overview: item.overview,
-              rating: item.rating, year: item.year, genres: item.genres,
-              onPlay: () => {
-                playUiSound('play');
-                state.type = gtype; state.id = item.id; state.title = item.title;
-                state._posterPath = item.posterPath; state.overview = item.overview || '';
-                state.rating = item.rating || 0; state.genres = item.genres || [];
-                state.year = item.year || ''; state.season = 1; state.episode = 1;
-                persist(); syncSettingsUI(); loadContent();
-              },
-              onDetail: () => openDetail({ type: gtype, ...item })
-            });
-            grid.appendChild(card);
-          });
-
-          section.appendChild(grid);
-          $('recsContent').appendChild(section);
-        });
-      } catch {
-        $('recsLoading').style.display = 'none';
-        $('recsEmpty').style.display = 'block';
-      }
-    }
-
-    // ══════════════════════════════════════
     //  DYNAMIC THEMING
     // ══════════════════════════════════════
     function extractPaletteFromImage(imageUrl) {
@@ -3009,8 +2932,8 @@
     // ══════════════════════════════════════
     //  TABS
     // ══════════════════════════════════════
-    const TAB_PANELS = { search: 'panelSearch', watchlist: 'panelWatchlist', saved: 'panelRecent', recs: 'panelRecs' };
-    const TAB_BTNS   = { search: 'tabSearch',   watchlist: 'tabWatchlist',   saved: 'tabRecent',   recs: 'tabRecs'  };
+    const TAB_PANELS = { search: 'panelSearch', watchlist: 'panelWatchlist', saved: 'panelRecent' };
+    const TAB_BTNS   = { search: 'tabSearch',   watchlist: 'tabWatchlist',   saved: 'tabRecent'   };
 
     function moveTabIndicator(activeBtn) {
       const nav = $('tabsNav');
@@ -3389,6 +3312,7 @@
       detailModal.classList.add('open');
       document.body.style.overflow = 'hidden';
       loadDetailTrailer(item);
+      loadDetailSimilar(item);
     }
 
     function closeDetail() {
@@ -3396,6 +3320,44 @@
       document.body.style.overflow = '';
       detailItem = null;
       closeTrailer();
+    }
+
+    async function loadDetailSimilar(item) {
+      const container = $('detailSimilar');
+      const grid = $('detailSimilarGrid');
+      container.style.display = 'none';
+
+      try {
+        const groups = await workerFetch({ action: 'recs', id: item.id, type: item.type, title: item.title });
+        const allResults = [...(groups.tv || []), ...(groups.movie || [])];
+        if (!allResults.length) return;
+
+        grid.innerHTML = '';
+        allResults.slice(0, 6).forEach(sim => {
+          const card = createCard({
+            type: sim.type, id: sim.id, title: sim.title,
+            posterPath: sim.posterPath, overview: sim.overview,
+            rating: sim.rating, year: sim.year, genres: sim.genres,
+            onPlay: () => {
+              playUiSound('play');
+              closeDetail();
+              state.type = sim.type; state.id = sim.id; state.title = sim.title;
+              state._posterPath = sim.posterPath; state.overview = sim.overview || '';
+              state.rating = sim.rating || 0; state.genres = sim.genres || [];
+              state.year = sim.year || ''; state.season = 1; state.episode = 1;
+              persist(); syncSettingsUI(); loadContent();
+            },
+            onDetail: () => {
+              openDetail({ type: sim.type, ...sim });
+            }
+          });
+          grid.appendChild(card);
+        });
+
+        container.style.display = '';
+      } catch {
+        // silently hide on error
+      }
     }
 
     async function loadDetailEpisodes(item, season) {

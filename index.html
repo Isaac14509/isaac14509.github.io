@@ -1678,6 +1678,7 @@
             <button class="tab-btn active" id="tabSearch">🔍 Search</button>
             <button class="tab-btn" id="tabWatchlist">📋 Watchlist</button>
             <button class="tab-btn" id="tabRecent">⟳ Continue</button>
+            <button class="tab-btn" id="tabTrending">🔥 Trending</button>
           </div>
 
           <!-- SEARCH TAB -->
@@ -1708,6 +1709,18 @@
               <div class="empty-text">Your continue watching items will appear here as you watch.<br><span>Continue watching from where you left off.</span></div>
             </div>
             <div class="media-grid" id="recentGrid" style="display:none;"></div>
+          </div>
+
+          <!-- TRENDING TAB -->
+          <div id="panelTrending" style="display:none;">
+            <div class="empty-state" id="trendingEmpty">
+              <span class="empty-icon">🔥</span>
+              <div class="empty-text">Loading trending content<span class="dots"><span></span><span></span><span></span></span></div>
+            </div>
+            <div id="trendingLoading" style="display:none; text-align:center; padding:52px; color:var(--muted); font-size:13px;">
+              Finding what's trending <span class="dots"><span></span><span></span><span></span></span>
+            </div>
+            <div class="media-grid" id="trendingGrid" style="display:none;"></div>
           </div>
 
         </div><!-- /sidebar-tabs-wrap -->
@@ -2587,6 +2600,63 @@
     }
 
     // ══════════════════════════════════════
+    //  TRENDING
+    // ══════════════════════════════════════
+    let trendingLoaded = false;
+
+    async function loadTrending() {
+      if (trendingLoaded) return;
+
+      $('trendingLoading').style.display = 'block';
+      $('trendingEmpty').style.display = 'none';
+      $('trendingGrid').style.display = 'none';
+
+      try {
+        const data = await workerFetch({ action: 'trending', time_window: 'week' });
+        const results = data.results || [];
+
+        $('trendingLoading').style.display = 'none';
+
+        if (!results.length) {
+          $('trendingEmpty').style.display = 'block';
+          $('trendingEmpty').innerHTML = `<span class="empty-icon">🔥</span><div class="empty-text">Nothing trending right now.</div>`;
+          return;
+        }
+
+        trendingLoaded = true;
+        renderTrending(results);
+      } catch {
+        $('trendingLoading').style.display = 'none';
+        $('trendingEmpty').style.display = 'block';
+        $('trendingEmpty').innerHTML = `<span class="empty-icon">⚠️</span><div class="empty-text">Failed to load trending content.</div>`;
+      }
+    }
+
+    function renderTrending(results) {
+      $('trendingEmpty').style.display = 'none';
+      $('trendingGrid').style.display = 'grid';
+      $('trendingGrid').innerHTML = '';
+
+      results.forEach(item => {
+        const card = createCard({
+          type: item.type, id: item.id, title: item.title,
+          posterPath: item.posterPath, overview: item.overview,
+          rating: item.rating, year: item.year, genres: item.genres,
+          onPlay: () => {
+            playUiSound('play');
+            state.type = item.type; state.id = item.id; state.title = item.title;
+            state._posterPath = item.posterPath; state.overview = item.overview || '';
+            state.rating = item.rating || 0; state.genres = item.genres || [];
+            state.year = item.year || ''; state.season = 1; state.episode = 1;
+            persist(); syncSettingsUI(); loadContent();
+          },
+          onDetail: () => openDetail(item)
+        });
+        $('trendingGrid').appendChild(card);
+      });
+    }
+
+    // ══════════════════════════════════════
     //  SEARCH
     // ══════════════════════════════════════
     let searchAbort = null;
@@ -2917,8 +2987,8 @@
     // ══════════════════════════════════════
     //  TABS
     // ══════════════════════════════════════
-    const TAB_PANELS = { search: 'panelSearch', watchlist: 'panelWatchlist', saved: 'panelRecent' };
-    const TAB_BTNS   = { search: 'tabSearch',   watchlist: 'tabWatchlist',   saved: 'tabRecent'   };
+    const TAB_PANELS = { search: 'panelSearch', watchlist: 'panelWatchlist', saved: 'panelRecent', trending: 'panelTrending' };
+    const TAB_BTNS   = { search: 'tabSearch',   watchlist: 'tabWatchlist',   saved: 'tabRecent',   trending: 'tabTrending'   };
 
     function moveTabIndicator(activeBtn) {
       const nav = $('tabsNav');
@@ -2938,6 +3008,7 @@
       moveTabIndicator($(TAB_BTNS[tab]));
       if (tab === 'watchlist') renderWatchlist();
       if (tab === 'saved') renderRecent();
+      if (tab === 'trending') loadTrending();
     }
 
     Object.keys(TAB_BTNS).forEach(k => {

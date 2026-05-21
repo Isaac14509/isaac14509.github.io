@@ -1268,24 +1268,10 @@
       background: linear-gradient(180deg, rgba(0,0,0,0.08) 35%, rgba(var(--panel-rgb), 1) 100%);
     }
 
-    .detail-hero-poster {
-      position: absolute;
-      bottom: 8px;
-      left: 24px;
-      width: 92px;
-      aspect-ratio: 2/3;
-      border-radius: var(--radius);
-      object-fit: cover;
-      border: 2px solid rgba(255,255,255,0.14);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.65);
-      z-index: 2;
-    }
-
-    .detail-body { padding: 30px 24px 24px 132px; min-height: 0; }
+    .detail-body { padding: 30px 24px 24px; min-height: 0; }
 
     @media (max-width: 520px) {
       .detail-body { padding: 64px 16px 20px 16px; }
-      .detail-hero-poster { left: 16px; }
     }
 
     .detail-title {
@@ -1750,7 +1736,6 @@
       <div class="detail-hero" id="detailHero">
         <img class="detail-hero-img" id="detailHeroImg" src="" alt="">
         <div class="detail-hero-gradient"></div>
-        <img class="detail-hero-poster" id="detailHeroPoster" src="" alt="">
       </div>
       <div class="detail-body">
         <div class="detail-title" id="detailTitle">—</div>
@@ -3223,11 +3208,8 @@
       const heroEl = $('detailHero');
       heroEl.classList.toggle('movie-hero', item.type === 'movie');
       const heroImg = $('detailHeroImg');
-      const heroPoster = $('detailHeroPoster');
       heroImg.src = backdropUrl;
       heroImg.style.display = backdropUrl ? '' : 'none';
-      heroPoster.src = posterUrl;
-      heroPoster.style.display = posterUrl ? '' : 'none';
       $('detailHero').style.display = (backdropUrl || posterUrl) ? '' : 'none';
 
       $('detailTitle').textContent = item.title || '—';

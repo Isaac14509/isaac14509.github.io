@@ -1,0 +1,3 @@
+name = "not2flix-worker"
+main = "cloudflare_worker.js"
+compatibility_date = "2025-01-01"

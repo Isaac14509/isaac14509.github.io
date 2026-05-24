@@ -2791,7 +2791,16 @@
 
         if (!results.length) {
           $('searchEmpty').style.display = 'block';
-          $('searchEmpty').innerHTML = `<span class="empty-icon">🔍</span><div class="empty-text">No results for "${query}"</div>`;
+          const searchEmptyEl = $('searchEmpty');
+          searchEmptyEl.textContent = '';
+          const iconEl = document.createElement('span');
+          iconEl.className = 'empty-icon';
+          iconEl.textContent = '🔍';
+          const textEl = document.createElement('div');
+          textEl.className = 'empty-text';
+          textEl.textContent = `No results for "${query}"`;
+          searchEmptyEl.appendChild(iconEl);
+          searchEmptyEl.appendChild(textEl);
           return;
         }
 

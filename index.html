@@ -111,6 +111,17 @@
       gap: 14px;
       padding: 24px 0 20px;
       flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(5, 5, 7, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .header--hidden {
+      transform: translateY(-100%);
     }
 
     .logo {
@@ -1013,6 +1024,46 @@
       background: rgba(180, 20, 20, 0.45);
     }
 
+    /* ══════════ DRAG-TO-REORDER ══════════ */
+    .media-card.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
+      cursor: grabbing;
+    }
+
+    .media-card.drag-over {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 2px var(--accent), 0 16px 40px rgba(0,0,0,0.6) !important;
+      transform: translateY(-4px) scale(1.02);
+    }
+
+    .media-card.dragging .card-hover,
+    .media-card.drag-over .card-hover {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .media-card .drag-handle {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.14s;
+      pointer-events: none;
+      cursor: grab;
+    }
+
+    .media-card:hover .drag-handle {
+      opacity: 1;
+    }
+
+    #watchlistGrid.drag-active .media-card {
+      cursor: grab;
+    }
+
     /* ══════════ EMPTY STATE ══════════ */
     .empty-state {
       text-align: center;
@@ -1054,6 +1105,79 @@
     @keyframes dotBlink {
       0%, 80%, 100% { opacity: 0.2; }
       40%           { opacity: 1; }
+    }
+
+    /* ══════════ SKELETON CARDS ══════════ */
+    .card-skeleton {
+      position: relative;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: rgba(var(--panel-rgb), 0.5);
+      border: 1px solid var(--border);
+      aspect-ratio: 2 / 3;
+      cursor: default;
+      box-shadow: var(--shadow-card);
+    }
+
+    .card-skeleton::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.03) 40%,
+        rgba(255, 255, 255, 0.06) 50%,
+        rgba(255, 255, 255, 0.03) 60%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: skeletonShimmer 1.8s ease-in-out infinite;
+    }
+
+    .card-skeleton-fade {
+      opacity: 0;
+      transform: scale(0.96);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .card-skeleton-fade.in {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    @keyframes skeletonShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Skeleton gradient blocks inside the card for realistic layout */
+    .card-skeleton-body {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 13px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-skeleton-badge {
+      width: 32px;
+      height: 10px;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .card-skeleton-line {
+      height: 12px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .card-skeleton-line.short {
+      width: 60%;
     }
 
     /* ══════════ SAVED FLASH ══════════ */
@@ -1103,6 +1227,30 @@
     }
 
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #toast.toast-success {
+      border-color: rgba(52, 211, 153, 0.35);
+      color: #a7f3d0;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 12px rgba(52, 211, 153, 0.08);
+    }
+
+    #toast.toast-error {
+      border-color: rgba(239, 68, 68, 0.45);
+      color: #fca5a5;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 12px rgba(239, 68, 68, 0.10);
+    }
+
+    #toast.toast-warning {
+      border-color: rgba(251, 191, 36, 0.40);
+      color: #fcd34d;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 12px rgba(251, 191, 36, 0.08);
+    }
+
+    #toast.toast-info {
+      border-color: rgba(96, 165, 250, 0.35);
+      color: #93c5fd;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 12px rgba(96, 165, 250, 0.08);
+    }
 
     /* ══════════ TWO-COLUMN LAYOUT ══════════ */
     .main-layout { display: flex; gap: 22px; align-items: flex-start; }
@@ -2046,6 +2194,44 @@
     }
 
     // ══════════════════════════════════════
+    //  SKELETON HELPERS
+    // ══════════════════════════════════════
+    function renderSkeletons(grid, count = 8) {
+      if (!grid) return;
+      grid.style.display = 'grid';
+      grid.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < count; i++) {
+        const skel = document.createElement('div');
+        skel.className = 'card-skeleton card-skeleton-fade';
+        skel.innerHTML = `
+          <div class="card-skeleton-body">
+            <div class="card-skeleton-badge"></div>
+            <div class="card-skeleton-line"></div>
+            <div class="card-skeleton-line short"></div>
+          </div>`;
+        frag.appendChild(skel);
+      }
+      grid.appendChild(frag);
+      // Trigger fade-in on next frame
+      requestAnimationFrame(() => {
+        grid.querySelectorAll('.card-skeleton-fade').forEach(el => el.classList.add('in'));
+      });
+    }
+
+    function clearSkeletons(grid) {
+      if (!grid) return;
+      const skeletons = grid.querySelectorAll('.card-skeleton');
+      if (skeletons.length) {
+        skeletons.forEach(el => el.classList.remove('in'));
+        // Remove after fade-out completes
+        setTimeout(() => {
+          skeletons.forEach(el => el.remove());
+        }, 260);
+      }
+    }
+
+    // ══════════════════════════════════════
     //  WORKER API
     // ══════════════════════════════════════
     async function workerFetch(params, signal) {
@@ -2157,15 +2343,31 @@
     state.recent = deduplicateRecentByType(state.recent);
     persist();
 
+    // ═══════════════════════════════════════════════
+    //  LEGACY WATCHLIST METADATA MIGRATION
+    // ═══════════════════════════════════════════════
+    // One-time: fill missing overview/rating/genres/year for existing entries
+    // so watchlist cards render complete hover overlays.
+    (function migrateWatchlistMetadata() {
+      let changed = false;
+      state.watchlist.forEach(item => {
+        if (item.overview === undefined) { item.overview = ''; changed = true; }
+        if (item.rating === undefined) { item.rating = 0; changed = true; }
+        if (!Array.isArray(item.genres)) { item.genres = []; changed = true; }
+        if (item.year === undefined) { item.year = ''; changed = true; }
+      });
+      if (changed) persist();
+    })();
+
     // ══════════════════════════════════════
     //  TOAST / FLASH
     // ══════════════════════════════════════
     let toastTimer;
-    function showToast(msg) {
+    function showToast(msg, variant) {
       toastEl.textContent = msg;
-      toastEl.classList.add('show');
+      toastEl.className = 'show' + (variant ? ' toast-' + variant : '');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
+      toastTimer = setTimeout(() => { toastEl.className = ''; }, 2000);
     }
 
     function flashSaved(msg = '✓ SAVED') {
@@ -2277,7 +2479,7 @@
             triggerDynamicTheme();
           }
         })
-        .catch(() => { });
+        .catch(e => console.warn('fetchTitle: metadata fetch failed', e));
     }
 
     // ══════════════════════════════════════
@@ -2289,7 +2491,7 @@
 
       workerFetch({ action: 'episode', id: state.id, season: state.season, episode: state.episode })
         .then(data => { episodeRuntime = data.runtime || 0; })
-        .catch(() => { episodeRuntime = 0; });
+        .catch(e => { episodeRuntime = 0; console.warn('fetchEpisodeRuntime failed', e); });
     }
 
     // ══════════════════════════════════════
@@ -2411,7 +2613,7 @@
           showToast(`▶  Season ${state.season} Episode 1`);
           return;
         }
-      } catch { }
+        } catch (e) { console.warn('goNextEpisode: season fetch failed, defaulting to episode 1', e); }
 
       state.episode++;
       persist();
@@ -2542,11 +2744,11 @@
         e.stopPropagation();
         playUiSound('click');
         const exists = state.watchlist.some(x => String(x.id) === String(id) && x.type === type);
-        if (exists) { showToast('Already in watchlist'); return; }
-        state.watchlist.unshift({ type, id, title, posterPath, season: 1, episode: 1 });
+        if (exists) { showToast('Already in watchlist', 'warning'); return; }
+        state.watchlist.unshift({ type, id, title, posterPath, overview: overview || '', rating: rating || 0, genres: Array.isArray(genres) ? genres : [], year: year || '', season: 1, episode: 1 });
         persist();
         renderWatchlist();
-        showToast('✓ Added to watchlist');
+        showToast('✓ Added to watchlist', 'success');
       });
 
       if (onRemove) {
@@ -2568,18 +2770,72 @@
       const exists = state.watchlist.some(
         x => String(x.id) === String(state.id) && x.type === state.type
       );
-      if (exists) { showToast('Already in watchlist'); return; }
+      if (exists) { showToast('Already in watchlist', 'warning'); return; }
       state.watchlist.unshift({
         type: state.type, id: state.id, title: state.title,
         posterPath: state._posterPath || null,
+        overview: state.overview || '',
+        rating: state.rating || 0,
+        genres: Array.isArray(state.genres) ? state.genres : [],
+        year: state.year || '',
         season: state.season, episode: state.episode
       });
       persist();
       renderWatchlist();
-      showToast('✓ Added to watchlist');
+      showToast('✓ Added to watchlist', 'success');
     }
 
     $('btnAddWl').addEventListener('click', addToWatchlist);
+
+    // ──────── Drag helpers ────────
+    let _dragIdx = null;
+
+    function _dragStartHandler(e) {
+      const card = e.target.closest('.media-card');
+      if (!card) return;
+      _dragIdx = parseInt(card.dataset.idx, 10);
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', _dragIdx);
+      document.getElementById('watchlistGrid').classList.add('drag-active');
+    }
+
+    function _dragOverHandler(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const card = e.target.closest('.media-card');
+      if (!card || parseInt(card.dataset.idx, 10) === _dragIdx) return;
+      card.classList.add('drag-over');
+    }
+
+    function _dragLeaveHandler(e) {
+      const card = e.target.closest('.media-card');
+      if (!card) return;
+      card.classList.remove('drag-over');
+    }
+
+    function _dropHandler(e) {
+      e.preventDefault();
+      const target = e.target.closest('.media-card');
+      if (!target) return;
+      const fromIdx = _dragIdx;
+      const toIdx = parseInt(target.dataset.idx, 10);
+      if (fromIdx === null || fromIdx === toIdx) return;
+
+      target.classList.remove('drag-over');
+      const item = state.watchlist.splice(fromIdx, 1)[0];
+      state.watchlist.splice(toIdx, 0, item);
+      persist();
+      renderWatchlist();
+    }
+
+    function _dragEndHandler() {
+      document.querySelectorAll('.media-card.dragging, .media-card.drag-over').forEach(el => {
+        el.classList.remove('dragging', 'drag-over');
+      });
+      document.getElementById('watchlistGrid')?.classList.remove('drag-active');
+      _dragIdx = null;
+    }
 
     function renderWatchlist() {
       const grid = $('watchlistGrid');
@@ -2615,6 +2871,23 @@
           },
           onDetail: () => openDetail(item)
         });
+
+        // Drag-and-drop wiring
+        card.dataset.idx = idx;
+        card.draggable = true;
+        card.addEventListener('dragstart', _dragStartHandler);
+        card.addEventListener('dragover', _dragOverHandler);
+        card.addEventListener('dragenter', e => e.preventDefault());
+        card.addEventListener('dragleave', _dragLeaveHandler);
+        card.addEventListener('drop', _dropHandler);
+        card.addEventListener('dragend', _dragEndHandler);
+
+        // Drag handle indicator
+        const handle = document.createElement('div');
+        handle.className = 'drag-handle';
+        handle.textContent = '⠿';
+        card.appendChild(handle);
+
         grid.appendChild(card);
       });
     }
@@ -2687,17 +2960,18 @@
     async function loadTrending() {
       if (trendingLoaded) return;
 
-      $('trendingLoading').style.display = 'block';
+      $('trendingLoading').style.display = 'none';
       $('trendingEmpty').style.display = 'none';
-      $('trendingGrid').style.display = 'none';
+      renderSkeletons($('trendingGrid'), 8);
 
       try {
         const data = await workerFetch({ action: 'trending', time_window: 'week' });
         const results = data.results || [];
 
-        $('trendingLoading').style.display = 'none';
+        clearSkeletons($('trendingGrid'));
 
         if (!results.length) {
+          $('trendingGrid').style.display = 'none';
           $('trendingEmpty').style.display = 'block';
           $('trendingEmpty').innerHTML = `<span class="empty-icon">🔥</span><div class="empty-text">Nothing trending right now.</div>`;
           return;
@@ -2706,7 +2980,8 @@
         trendingLoaded = true;
         renderTrending(results);
       } catch {
-        $('trendingLoading').style.display = 'none';
+        clearSkeletons($('trendingGrid'));
+        $('trendingGrid').style.display = 'none';
         $('trendingEmpty').style.display = 'block';
         $('trendingEmpty').innerHTML = `<span class="empty-icon">⚠️</span><div class="empty-text">Failed to load trending content.</div>`;
       }
@@ -2754,14 +3029,23 @@
     function showSearchHistory() {
       const container = $('searchHistoryContainer');
       if (state.recentSearches.length === 0) { container.classList.remove('visible'); return; }
-      const html = state.recentSearches
-        .map(q => {
-          const escaped = q.replace(/"/g, '&quot;');
-          return `<span class="search-history-chip" onclick="searchInput.value='${escaped}'; doSearch('${escaped}', searchType.value);">${q}</span>`;
-        }).join('');
-      container.innerHTML = html;
+      container.innerHTML = state.recentSearches.map(q =>
+        `<span class="search-history-chip" data-query="${q.replace(/"/g, '&quot;')}">${q}</span>`
+      ).join('');
       container.classList.add('visible');
     }
+
+    // Event delegation for search history chips (replaces inline onclick)
+    document.addEventListener('click', e => {
+      const chip = e.target.closest('.search-history-chip');
+      if (!chip) return;
+      const query = chip.dataset.query;
+      if (!query) return;
+      const input = $('searchInput');
+      const typeSelect = $('searchType');
+      if (input) input.value = query;
+      doSearch(query, typeSelect?.value || 'all');
+    });
 
     function hideSearchHistory() {
       $('searchHistoryContainer').classList.remove('visible');
@@ -2776,9 +3060,9 @@
         return;
       }
 
-      $('searchLoading').style.display = 'block';
-      $('searchGrid').style.display = 'none';
+      $('searchLoading').style.display = 'none';
       $('searchEmpty').style.display = 'none';
+      renderSkeletons($('searchGrid'), 8);
 
       searchAbort?.abort();
       searchAbort = new AbortController();
@@ -2787,9 +3071,10 @@
         const data = await workerFetch({ action: 'search', query, type }, searchAbort.signal);
         const results = data.results || [];
 
-        $('searchLoading').style.display = 'none';
+        clearSkeletons($('searchGrid'));
 
         if (!results.length) {
+          $('searchGrid').style.display = 'none';
           $('searchEmpty').style.display = 'block';
           const searchEmptyEl = $('searchEmpty');
           searchEmptyEl.textContent = '';
@@ -2827,8 +3112,12 @@
         });
 
       } catch (e) {
-        if (e.name === 'AbortError') return;
-        $('searchLoading').style.display = 'none';
+        if (e.name === 'AbortError') {
+          clearSkeletons($('searchGrid'));
+          return;
+        }
+        clearSkeletons($('searchGrid'));
+        $('searchGrid').style.display = 'none';
         $('searchEmpty').style.display = 'block';
         $('searchEmpty').innerHTML = `<span class="empty-icon">⚠️</span><div class="empty-text">Search failed. Please try again.</div>`;
       }
@@ -3145,7 +3434,7 @@
       state.season = Math.max(1, parseInt($('cfgSeason').value, 10) || 1);
       state.episode = Math.max(1, parseInt($('cfgEpisode').value, 10) || 1);
 
-      if (enteredId && !hasValidEnteredId) { persist(); showToast('Invalid TMDB ID'); return; }
+      if (enteredId && !hasValidEnteredId) { persist(); showToast('Invalid TMDB ID', 'error'); return; }
 
       const idChanged = String(newId) !== String(state.id);
       if (newId) state.id = newId;
@@ -3157,7 +3446,7 @@
 
       if (!state.dynamicTheme) resetTheme();
       if (state.id) loadContent();
-      else showToast('Settings saved');
+      else showToast('Settings saved', 'success');
     });
 
     $('btnThemeToggle').addEventListener('click', () => {
@@ -3165,7 +3454,7 @@
       $('btnThemeToggle').classList.toggle('on', state.dynamicTheme);
       persist();
       if (state.dynamicTheme) { currentThemeKey = null; triggerDynamicTheme(); }
-      else { resetTheme(); showToast('Poster colours off'); }
+      else { resetTheme(); showToast('Poster colours off', 'info'); }
     });
 
     // ══════════════════════════════════════
@@ -3313,7 +3602,7 @@
       soundEnabled = !soundEnabled;
       try { localStorage.setItem('not2flix_sound', soundEnabled ? 'on' : 'off'); } catch { }
       syncSoundToggle();
-      showToast(soundEnabled ? '🔊 UI sounds on' : '🔇 UI sounds off');
+      showToast(soundEnabled ? '🔊 UI sounds on' : '🔇 UI sounds off', 'info');
     });
 
     syncSoundToggle();
@@ -3576,7 +3865,7 @@
       playUiSound('click');
       const item = detailItem;
       const idx = state.watchlist.findIndex(x => String(x.id) === String(item.id) && x.type === item.type);
-      if (idx > -1) { showToast('Already in watchlist'); return; }
+      if (idx > -1) { showToast('Already in watchlist', 'warning'); return; }
       state.watchlist.unshift({
         type: item.type, id: item.id, title: item.title,
         posterPath: item.posterPath || null, overview: item.overview || '',
@@ -3585,7 +3874,7 @@
       });
       persist(); renderWatchlist();
       $('detailBtnWl').textContent = '✓ In Watchlist';
-      showToast('✓ Added to watchlist');
+      showToast('✓ Added to watchlist', 'success');
     });
 
     $('detailSeasonSelect').addEventListener('change', () => {
@@ -3612,7 +3901,7 @@
           detailTrailerKey = first.key;
           btn.style.display = '';
         })
-        .catch(() => { });
+        .catch(e => console.warn('fetchTrailer: trailer fetch failed', e));
     }
 
     function openTrailer() {
@@ -3656,8 +3945,8 @@
         a.download = `not2flix-backup-${date}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('✓ Save exported');
-      } catch { showToast('Export failed'); }
+        showToast('✓ Save exported', 'success');
+      } catch { showToast('Export failed', 'error'); }
     });
 
     $('btnImport').addEventListener('click', () => {
@@ -3673,7 +3962,7 @@
         try {
           const imported = JSON.parse(evt.target.result);
           if (typeof imported !== 'object' || imported === null || !('progress' in imported)) {
-            showToast('⚠ Invalid save file'); return;
+            showToast('⚠ Invalid save file', 'error'); return;
           }
           Object.assign(state, { ...BLANK, ...imported });
           ['progress', 'watchlist', 'recent', 'savedShows', 'savedMovies', 'recentSearches'].forEach(k => {
@@ -3682,9 +3971,9 @@
           persist(); syncSettingsUI(); updateDisplay();
           renderWatchlist(); renderRecent(); showSearchHistory();
           if (state.id) { currentThemeKey = null; triggerDynamicTheme(); }
-          showToast('✓ Save imported');
+          showToast('✓ Save imported', 'success');
           playUiSound('play');
-        } catch { showToast('⚠ Could not read file'); }
+        } catch { showToast('⚠ Could not read file', 'error'); }
       };
       reader.readAsText(file);
     });
@@ -3709,6 +3998,42 @@
       localStorage.setItem('not2flix_adblock_prompt', 'seen');
       setTimeout(() => window.open('https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh', '_blank', 'noopener'), 200);
     });
+
+    // ══════════════════════════════════════
+    //  AUTO-HIDE HEADER
+    // ══════════════════════════════════════
+    (function initAutoHideHeader() {
+      const header = document.querySelector('.header');
+      if (!header) return;
+
+      let lastScrollY = window.scrollY;
+      let ticking = false;
+      const SHOW_AT_TOP = 80;
+      const SCROLL_THRESHOLD = 15;
+
+      function updateHeader() {
+        const currentScrollY = window.scrollY;
+        const delta = currentScrollY - lastScrollY;
+
+        if (currentScrollY <= SHOW_AT_TOP) {
+          header.classList.remove('header--hidden');
+        } else if (delta > SCROLL_THRESHOLD) {
+          header.classList.add('header--hidden');
+        } else if (delta < -SCROLL_THRESHOLD) {
+          header.classList.remove('header--hidden');
+        }
+
+        lastScrollY = currentScrollY;
+        ticking = false;
+      }
+
+      window.addEventListener('scroll', () => {
+        if (!ticking) {
+          requestAnimationFrame(updateHeader);
+          ticking = true;
+        }
+      }, { passive: true });
+    })();
 
     // ══════════════════════════════════════
     //  INIT

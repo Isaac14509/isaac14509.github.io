@@ -2024,8 +2024,8 @@
     const SAVE_THRESHOLD = 10;
     const RECENT_LIMIT = 16;
     const VIDFAST_ORIGINS = [
-      'https://vidfast.pro', 'https://vidfast.in', 'https://vidfast.io',
-      'https://vidfast.me', 'https://vidfast.net', 'https://vidfast.pm', 'https://vidfast.xyz'
+      'https://vidfast.pro', 'https://vidfast.in', 'https://vidfast.io', 'https://vidfast.me',
+      'https://vidfast.net', 'https://vidfast.pm', 'https://vidfast.vc', 'https://vidfast.bz'
     ];
 
     // ══════════════════════════════════════
@@ -2420,8 +2420,8 @@
       const hex = getPlayerThemeHex();
       const autoPlay = localStorage.getItem('not2flix_adblock_prompt') ? 'true' : 'false';
       const base = state.type === 'movie'
-        ? `https://vidfast.pro/movie/${state.id}`
-        : `https://vidfast.pro/tv/${state.id}/${state.season}/${state.episode}`;
+        ? `https://vidfast.vc/movie/${state.id}`
+        : `https://vidfast.vc/tv/${state.id}/${state.season}/${state.episode}`;
       return `${base}?theme=${hex}&nextButton=false&autoPlay=${autoPlay}&fullscreenButton=false&chromecast=false`;
     }
 

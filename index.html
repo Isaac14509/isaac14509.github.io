@@ -109,7 +109,7 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      padding: 24px 0 20px;
+      padding: 24px 20px 20px;
       flex-wrap: wrap;
       position: sticky;
       top: 0;
@@ -465,6 +465,7 @@
       box-shadow: var(--shadow-player);
       transition: box-shadow 0.9s;
       margin-bottom: 0;
+      scroll-margin-top: 80px;
     }
 
     .player-shell:fullscreen {
@@ -1293,7 +1294,7 @@
 
     @media (max-width: 700px) {
       .app { width: 100%; padding: 0 14px 64px; }
-      .header { gap: 10px; }
+      .header { gap: 10px; padding-left: 14px; padding-right: 14px; }
       .search-wrap { min-width: 0; max-width: 100%; }
       .media-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
       .info-bar { gap: 9px; }
@@ -1743,16 +1744,16 @@
 </head>
 
 <body>
-  <div class="app">
+  <!-- ══════════ HEADER (full-bleed sticky) ══════════ -->
+  <header class="header">
+    <span class="logo">not²flix<span class="logo-badge">Extended</span></span>
+    <div class="header-right">
+      <button id="btnSettings" title="Settings (G)">⚙</button>
+      <button class="btn-accent" id="btnSave" title="Save progress (S)">● Save</button>
+    </div>
+  </header>
 
-    <!-- ══════════ HEADER ══════════ -->
-    <header class="header">
-      <span class="logo">not²flix<span class="logo-badge">Extended</span></span>
-      <div class="header-right">
-        <button id="btnSettings" title="Settings (G)">⚙</button>
-        <button class="btn-accent" id="btnSave" title="Save progress (S)">● Save</button>
-      </div>
-    </header>
+  <div class="app">
 
     <!-- ══════════ SETTINGS ══════════ -->
     <div id="settingsPanel">
